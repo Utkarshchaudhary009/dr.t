@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "bun --bun tsc --noEmit",
+    "clean": "rm -rf .next && rm -rf node_modules && bun install"
   },
   "dependencies": {
     "@chat-adapter/state-memory": "^4.26.0",

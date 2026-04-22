@@ -18,12 +18,12 @@ export const bot = new Chat({
 });
 
 // Basic 'hi' response
-bot.onNewMention(async (thread, message) => {
+bot.onNewMention(async (thread) => {
   await thread.subscribe();
   await thread.post("Hi! I'm dr.t, your smart food advisor. Send me a picture of your food!");
 });
 
-bot.onDirectMessage(async (thread, message) => {
+bot.onDirectMessage(async (thread) => {
   await thread.subscribe();
   await thread.post("Hi! I'm dr.t, your smart food advisor. Send me a picture of your food!");
 });
