@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "fmt": "prettier --check .",
+    "test": "bun test",
     "typecheck": "bun --bun tsc --noEmit",
     "clean": "rm -rf .next && rm -rf node_modules && bun install"
   },
@@ -26,6 +28,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "prettier": "^3.8.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
