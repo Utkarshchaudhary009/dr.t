@@ -43,8 +43,8 @@ next-env.d.ts
 
 
 #skills
-.agent
-.agents
-.codex
-.gemini
+# .agent
+# .agents
+# .codex
+# .gemini
 
