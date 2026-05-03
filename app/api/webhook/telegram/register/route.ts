@@ -1,4 +1,4 @@
-import { getTelegramEnv } from "@/lib/chat";
+import { getTelegramEnv, resolveTelegramWebhookOrigin } from "@/lib/chat";
 
 export const dynamic = "force-dynamic";
 
@@ -12,12 +12,9 @@ export async function GET(req: Request) {
     );
   }
 
-  // Resolve the webhook URL: prefer explicit override, fall back to Vercel's
-  // auto-injected deployment URL, and finally to the request's own origin.
-  const origin =
-    process.env.WEBHOOK_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-    new URL(req.url).origin;
+  // Resolve the webhook URL: prefer explicit override, then the incoming
+  // request origin (e.g. custom production domain), and only then Vercel URL.
+  const origin = resolveTelegramWebhookOrigin(req.url);
 
   const webhookUrl = `${origin}/api/webhook/telegram`;
 

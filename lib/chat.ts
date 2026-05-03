@@ -30,6 +30,26 @@ export function getTelegramHardcodedReply(): string {
   return TELEGRAM_HARDCODED_REPLY;
 }
 
+export function resolveTelegramWebhookOrigin(
+  requestUrl: string,
+  env: TelegramRuntimeEnv = process.env,
+): string {
+  if (env.WEBHOOK_URL) {
+    return env.WEBHOOK_URL;
+  }
+
+  const requestOrigin = new URL(requestUrl).origin;
+  if (requestOrigin) {
+    return requestOrigin;
+  }
+
+  if (env.VERCEL_URL) {
+    return `https://${env.VERCEL_URL}`;
+  }
+
+  throw new Error("Unable to resolve webhook origin");
+}
+
 function registerTelegramHandlers(
   bot: Chat<{ telegram: ReturnType<typeof createTelegramAdapter> }>,
 ) {
