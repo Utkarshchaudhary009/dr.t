@@ -12,21 +12,21 @@ A user sends a message (and soon food photos), and the bot responds with guidanc
 
 ## Current Product Status
 
-This repository is an **MVP foundation** and currently focuses on a reliable Telegram webhook integration plus a predictable reply flow.
+This repository is an **MVP foundation** with a working Telegram webhook integration and user persistence layer.
 
 What works now:
 
 - Telegram webhook endpoint.
 - Telegram webhook registration endpoint.
-- Basic hardcoded bot response for incoming messages.
+- **User identification**: every Telegram message is mapped to a stable `telegram_id` and upserted into Supabase.
 - Type-safe environment parsing.
-- Unit tests for core Telegram config/reply helpers.
+- Unit tests for Telegram config and user upsert logic.
 
 What is planned next:
 
 - Food-image ingestion and analysis.
 - Nutrition/sugar estimation pipeline.
-- User profile and daily intake persistence.
+- Daily sugar log per user.
 - Personalized recommendations.
 
 ---
@@ -62,7 +62,8 @@ The system uses a webhook-driven architecture:
 - **Next.js App Router API routes** for webhook handling.
 - **Chat SDK** (`chat`) for event model and thread abstraction.
 - **Telegram adapter** (`@chat-adapter/telegram`) for Telegram-specific transport.
-- **In-memory state adapter** (`@chat-adapter/state-memory`) for subscription state in this early MVP.
+- **Supabase** (`@supabase/supabase-js`) for persistent user and sugar log storage.
+- **In-memory state adapter** (`@chat-adapter/state-memory`) for subscription state.
 
 ---
 
@@ -100,12 +101,17 @@ Defined in `lib/chat.ts`:
 
 - Build singleton bot instance via `getBot()`.
 - Register handlers for:
-  - `onNewMention`
-  - `onDirectMessage`
-  - `onSubscribedMessage`
-- Reply with current hardcoded response.
+  - `onDirectMessage` — upserts user into DB, replies with greeting.
+  - `onSubscribedMessage` — keeps user profile fresh, stubs food analysis.
+- User identity is extracted from `message.raw.from` (the authoritative `TelegramUser` object).
 
-This establishes a stable base before plugging in AI and nutrition logic.
+### 4) User persistence
+
+Defined in `lib/users.ts` and `lib/supabase.ts`:
+
+- `upsertTelegramUser()` is called on every message.
+- Uses `ON CONFLICT (telegram_id)` so it is idempotent — safe at any message rate.
+- Returns the internal UUID (`DbUser.id`) used as a foreign key in all other tables (e.g., `sugar_logs`).
 
 ---
 
@@ -116,9 +122,17 @@ This establishes a stable base before plugging in AI and nutrition logic.
 - `app/api/webhook/telegram/register/route.ts`  
   Webhook registration helper endpoint.
 - `lib/chat.ts`  
-  Bot construction, env parsing, handler registration, hardcoded reply.
+  Bot construction, env parsing, handler registration, `resolveTelegramWebhookOrigin`.
 - `lib/chat.test.ts`  
-  Unit tests for env extraction and reply constant behavior.
+  Unit tests for env extraction and webhook origin resolution.
+- `lib/users.ts`  
+  `upsertTelegramUser()` — single source of truth for Telegram user persistence.
+- `lib/users.test.ts`  
+  Unit tests for user upsert logic (mocked Supabase).
+- `lib/supabase.ts`  
+  Singleton Supabase service-role client (server-only).
+- `schema.sql`  
+  Reference SQL schema — paste into Supabase SQL Editor to set up tables.
 - `.env.example`  
   Required/optional environment variables.
 
@@ -135,11 +149,15 @@ cp .env.example .env.local
 Required:
 
 - `TELEGRAM_BOT_TOKEN` — Bot token from BotFather.
+- `SUPABASE_URL` — Your Supabase project URL (e.g., `https://xxxx.supabase.co`).
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service-role key. **Server-only. Never expose to the browser.**
 
 Optional:
 
-- `TELEGRAM_WEBHOOK_SECRET` — Secret used for Telegram webhook verification in this codebase.
-- `WEBHOOK_URL` — Override public URL used by registration route.
+- `TELEGRAM_WEBHOOK_SECRET` — Secret for Telegram webhook verification.
+- `WEBHOOK_URL` — Override public URL used by the registration route.
+- `GOOGLE_GENERATIVE_AI_API_KEY` — API key for Gemini models (required if using Gemini).
+- `AI_PROVIDER` — Set to `gemini` (default) or `ollama`.
 
 ---
 
@@ -182,23 +200,30 @@ bun test
 
 Primary target is Vercel (`dr-t-rouge.vercel.app`).
 
-Recommended deployment checklist:
+### First-time setup
 
-1. Set `TELEGRAM_BOT_TOKEN` in Vercel project env.
-2. Set `TELEGRAM_WEBHOOK_SECRET` (if using secret verification).
+1. Create a Supabase project.
+2. Paste `schema.sql` into the Supabase SQL Editor and run it.
+3. Copy the **Project URL** and **service-role key** from Supabase Dashboard → Settings → API.
+
+### Vercel deployment checklist
+
+1. Set `TELEGRAM_BOT_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` in Vercel project env.
+2. Set `TELEGRAM_WEBHOOK_SECRET` (recommended).
 3. Deploy.
 4. Call `/api/webhook/telegram/register` once per environment/domain change.
-5. Verify bot responses from Telegram.
+5. Send a DM to the bot on Telegram — verify a row appears in the `telegram_users` Supabase table.
 
 ---
 
 ## Near-Term Roadmap
 
-1. **Persistence layer** for users, meals, and daily sugar totals.
-2. **Food analysis service** (image -> nutrition/sugar estimate).
-3. **Recommendation engine** for diabetes-aware guidance.
-4. **Observability** (structured logs, webhook diagnostics, alerting).
-5. **Resilience improvements** (retry/backoff, idempotency guards, dead-letter strategy).
+1. ~~**Persistence layer** for users~~ ✅ Done — `telegram_users` table + upsert on every message.
+2. **Sugar log writes** — record `food_name`, `sugar_grams` per message in `sugar_logs`.
+3. ~~**Food analysis service** (image → nutrition/sugar estimate via AI SDK).~~ ✅ Done — Integrated Gemini and Ollama.
+4. **Recommendation engine** for diabetes-aware guidance.
+5. **Observability** (structured logs, webhook diagnostics, alerting).
+6. **Resilience improvements** (retry/backoff, idempotency guards, dead-letter strategy).
 
 ---
 
