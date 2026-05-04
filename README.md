@@ -63,7 +63,7 @@ The system uses a webhook-driven architecture:
 - **Chat SDK** (`chat`) for event model and thread abstraction.
 - **Telegram adapter** (`@chat-adapter/telegram`) for Telegram-specific transport.
 - **Supabase** (`@supabase/supabase-js`) for persistent user and sugar log storage.
-- **In-memory state adapter** (`@chat-adapter/state-memory`) for subscription state.
+- **Redis state adapter** (`@chat-adapter/state-redis`) for persistent subscription state.
 
 ---
 
@@ -151,6 +151,7 @@ Required:
 - `TELEGRAM_BOT_TOKEN` — Bot token from BotFather.
 - `SUPABASE_URL` — Your Supabase project URL (e.g., `https://xxxx.supabase.co`).
 - `SUPABASE_SERVICE_ROLE_KEY` — Supabase service-role key. **Server-only. Never expose to the browser.**
+- `REDIS_URL` — Connection string for Redis, used for persistent bot state (e.g., `redis://...`).
 
 Optional:
 
