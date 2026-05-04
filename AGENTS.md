@@ -12,7 +12,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 dr.t is a Ai based smart food advisor for diabities patient(via Telegram). User sends a food picture, and our app stores users daily sugar input and also give suggestion whether user should eat it or not.The idea is ivolving. It is for a Inter-school level hackathon for 12th students.
 
 This repository is a VERY EARLY WIP. Proposing sweeping changes that improve long-term maintainability is encouraged.
-
+You must refer Readme.md for great start to understand this project.
 ## Core Priorities
 
 1. Performance first.

@@ -43,8 +43,12 @@ next-env.d.ts
 
 
 #skills
-# .agent
-# .agents
-# .codex
-# .gemini
+.agent
+.agents
+.codex
+.gemini
 
+
+.vercel
+.env*.local
+git add . && git commit -m "docs: add hackathon and slide strategies" && git push origin master
