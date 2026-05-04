@@ -1,4 +1,4 @@
-import { createMemoryState } from "@chat-adapter/state-memory";
+import { createRedisState } from "@chat-adapter/state-redis";
 import { createTelegramAdapter } from "@chat-adapter/telegram";
 import type { TelegramRawMessage } from "@chat-adapter/telegram";
 import { Chat, toAiMessages } from "chat";
@@ -163,7 +163,7 @@ function createTelegramBot(
         secretToken: env.secretToken,
       }),
     },
-    state: createMemoryState(),
+    state: createRedisState(),
   });
 
   registerTelegramHandlers(bot);

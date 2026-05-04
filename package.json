@@ -15,6 +15,7 @@
   "dependencies": {
     "@ai-sdk/google": "^3.0.67",
     "@chat-adapter/state-memory": "^4.26.0",
+    "@chat-adapter/state-redis": "^4.27.0",
     "@chat-adapter/telegram": "^4.26.0",
     "@supabase/supabase-js": "^2.105.1",
     "ai": "^6.0.168",
