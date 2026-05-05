@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { getTelegramEnv, resolveTelegramWebhookOrigin } from "@/lib/chat";
+import {
+  getTelegramEnv,
+  resolveTelegramWebhookOrigin,
+  shouldSendWelcomeMessage,
+} from "@/lib/chat";
 
 describe("getTelegramEnv", () => {
   test("returns bot and webhook tokens from env", () => {
@@ -57,5 +61,19 @@ describe("resolveTelegramWebhookOrigin", () => {
       threw = true;
     }
     expect(threw).toBe(true);
+  });
+});
+
+describe("shouldSendWelcomeMessage", () => {
+  test("returns true for /start", () => {
+    expect(shouldSendWelcomeMessage({ text: " /start " } as never)).toBe(true);
+  });
+
+  test("returns false for non-start text", () => {
+    expect(shouldSendWelcomeMessage({ text: "hello" } as never)).toBe(false);
+  });
+
+  test("returns false for non-text messages", () => {
+    expect(shouldSendWelcomeMessage({} as never)).toBe(false);
   });
 });
