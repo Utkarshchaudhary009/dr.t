@@ -224,7 +224,7 @@ Primary target is Vercel (`dr-t-rouge.vercel.app`).
 3. ~~**Food analysis service** (image → nutrition/sugar estimate via AI SDK).~~ ✅ Done — Integrated Gemini and Ollama.
 4. **Recommendation engine** for diabetes-aware guidance.
 5. **Observability** (structured logs, webhook diagnostics, alerting).
-6. **Resilience improvements** (retry/backoff, idempotency guards, dead-letter strategy).
+6. ~~**Resilience improvements** (retry/backoff, idempotency guards, dead-letter strategy).~~ ✅ Done — Optimized concurrency (debounce) and streaming stability.
 
 ---
 
