@@ -54,6 +54,17 @@ export function getTelegramEnv(
   };
 }
 
+function logTelegramFlow(step: string, data: Record<string, unknown> = {}) {
+  console.info(`[onSubscribedMessage] ${step}`, data);
+}
+
+function getThreadId(message: TelegramRawMessage): string {
+  if ("chat" in message && message.chat?.id !== undefined) {
+    return `telegram:${message.chat.id}`;
+  }
+  return "telegram:unknown";
+}
+
 function registerTelegramHandlers(
   bot: Chat<{ telegram: ReturnType<typeof createTelegramAdapter> }>,
 ) {
@@ -66,9 +77,14 @@ function registerTelegramHandlers(
    * 4. Reply with a personalised greeting.
    */
   bot.onDirectMessage(async (thread, message) => {
-    await thread.subscribe();
-
     const raw = message.raw as TelegramRawMessage;
+    logTelegramFlow("direct_message_received", { threadId: getThreadId(raw) });
+
+    await thread.subscribe();
+    logTelegramFlow("direct_message_subscribed", {
+      threadId: getThreadId(raw),
+    });
+
     const from = raw.from;
 
     // Channel posts don't carry a `from` field.
@@ -99,6 +115,10 @@ function registerTelegramHandlers(
    */
   bot.onSubscribedMessage(async (thread, message) => {
     const raw = message.raw as TelegramRawMessage;
+    logTelegramFlow("message_received", {
+      threadId: getThreadId(raw),
+      messageId: raw.message_id,
+    });
     const from = raw.from;
 
     if (!from) return;
@@ -116,6 +136,7 @@ function registerTelegramHandlers(
     const history = await toAiMessages(result.messages);
 
     const { geminiAgent, ollamaAgent } = getAgents(dbUser.id);
+    logTelegramFlow("agents_initialized", { userId: dbUser.id });
     const defaultProvider = process.env.AI_PROVIDER || "gemini";
     const primaryAgent =
       defaultProvider === "ollama" ? ollamaAgent : geminiAgent;
@@ -123,6 +144,7 @@ function registerTelegramHandlers(
       defaultProvider === "ollama" ? geminiAgent : ollamaAgent;
 
     try {
+      logTelegramFlow("primary_stream_start", { provider: defaultProvider });
       const response = await primaryAgent.stream({ prompt: history });
       await thread.post(response.fullStream);
     } catch (e) {
@@ -131,6 +153,9 @@ function registerTelegramHandlers(
         e,
       );
       try {
+        logTelegramFlow("fallback_stream_start", {
+          provider: defaultProvider === "ollama" ? "gemini" : "ollama",
+        });
         const fallbackResponse = await fallbackAgent.stream({
           prompt: history,
         });
@@ -164,6 +189,7 @@ function createTelegramBot(
       }),
     },
     state: createRedisState(),
+    onLockConflict: "force",
   });
 
   registerTelegramHandlers(bot);
