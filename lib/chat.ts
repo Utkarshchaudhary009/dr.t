@@ -66,7 +66,41 @@ async function respondWithAi(
   userId: string,
 ) {
   const result = await thread.adapter.fetchMessages(thread.id, { limit: 20 });
+
+  // Log message history and attachments for debugging
+  logTelegramFlow("fetched_messages", {
+    count: result.messages.length,
+    messages: result.messages.map((m) => ({
+      id: m.id,
+      text: m.text,
+      attachments: m.attachments?.map((a) => ({
+        type: a.type,
+        mimeType: a.mimeType,
+        size: a.size,
+        hasFetchData: !!a.fetchData,
+      })),
+    })),
+  });
+
   const history = await toAiMessages(result.messages);
+
+  // Log converted history to see what's being sent to AI
+  logTelegramFlow("history_converted", {
+    messageCount: history.length,
+    history: history.map((h) => ({
+      role: h.role,
+      contentLength:
+        typeof h.content === "string" ? h.content.length : undefined,
+      parts: Array.isArray(h.content)
+        ? h.content.map((p) => ({
+            type: p.type,
+            hasData:
+              p.type !== "text" &&
+              (("data" in p && !!p.data) || ("image" in p && !!p.image)),
+          }))
+        : undefined,
+    })),
+  });
 
   const { geminiAgent, ollamaAgent } = getAgents(userId);
   logTelegramFlow("agents_initialized", { userId });
