@@ -9,16 +9,31 @@ export function resolveTelegramWebhookOrigin(
   requestUrl: string,
   env: Record<string, string | undefined> = process.env,
 ): string {
-  if (env.WEBHOOK_URL) return env.WEBHOOK_URL;
+  let origin = env.WEBHOOK_URL;
 
-  const { origin } = new URL(requestUrl);
-  if (origin && origin !== "null") return origin;
+  if (!origin) {
+    const url = new URL(requestUrl);
+    if (url.origin && url.origin !== "null") {
+      origin = url.origin;
+    } else if (env.VERCEL_URL) {
+      origin = `https://${env.VERCEL_URL}`;
+    }
+  }
 
-  if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`;
+  if (!origin) {
+    throw new Error(
+      "Cannot determine webhook origin. Set WEBHOOK_URL or deploy to Vercel.",
+    );
+  }
 
-  throw new Error(
-    "Cannot determine webhook origin. Set WEBHOOK_URL or deploy to Vercel.",
-  );
+  if (origin.startsWith("http://") && !origin.includes("localhost")) {
+    throw new Error(
+      `Insecure webhook origin: "${origin}". Telegram requires an HTTPS URL. ` +
+      "Use a tool like ngrok to get an HTTPS URL for local development.",
+    );
+  }
+
+  return origin;
 }
 
 type TelegramEnv = {
@@ -28,8 +43,12 @@ type TelegramEnv = {
 
 type TelegramRuntimeEnv = Record<string, string | undefined>;
 
+interface BotState {
+  clearedAt?: string;
+}
+
 let botInstance:
-  | Chat<{ telegram: ReturnType<typeof createTelegramAdapter> }>
+  | Chat<{ telegram: ReturnType<typeof createTelegramAdapter> }, BotState>
   | null
   | undefined;
 
@@ -48,6 +67,18 @@ export function shouldSendWelcomeMessage(message: TelegramRawMessage): boolean {
   return text === "/start";
 }
 
+export function isClearCommand(message: TelegramRawMessage): boolean {
+  if (!("text" in message)) return false;
+  const text = message.text?.trim().toLowerCase();
+  return text === "/clear";
+}
+
+export function isHelpCommand(message: TelegramRawMessage): boolean {
+  if (!("text" in message)) return false;
+  const text = message.text?.trim().toLowerCase();
+  return text === "/help";
+}
+
 function logTelegramFlow(step: string, data: Record<string, unknown> = {}) {
   console.info(`[telegram] ${step}`, data);
 }
@@ -60,17 +91,23 @@ function getThreadId(message: TelegramRawMessage): string {
 }
 
 async function respondWithAi(
-  bot: Chat<{ telegram: ReturnType<typeof createTelegramAdapter> }>,
+  bot: Chat<{ telegram: ReturnType<typeof createTelegramAdapter> }, BotState>,
   thread: Parameters<Parameters<typeof bot.onSubscribedMessage>[0]>[0],
   raw: TelegramRawMessage,
   userId: string,
 ) {
   const result = await thread.adapter.fetchMessages(thread.id, { limit: 20 });
+  const state = await thread.state;
+  const clearedAt = state?.clearedAt ? new Date(state.clearedAt) : null;
+
+  const filteredMessages = clearedAt
+    ? result.messages.filter((m) => m.metadata.dateSent > clearedAt)
+    : result.messages;
 
   // Log message history and attachments for debugging
   logTelegramFlow("fetched_messages", {
-    count: result.messages.length,
-    messages: result.messages.map((m) => ({
+    count: filteredMessages.length,
+    messages: filteredMessages.map((m) => ({
       id: m.id,
       text: m.text,
       attachments: m.attachments?.map((a) => ({
@@ -84,7 +121,7 @@ async function respondWithAi(
 
   // Workaround: toAiMessages filters out messages with empty text.
   // We ensure messages with attachments have at least a placeholder text.
-  const messagesToConvert = result.messages.map((m) => {
+  const messagesToConvert = filteredMessages.map((m) => {
     if (!m.text.trim() && (m.attachments?.length ?? 0) > 0) {
       // Create a shallow copy and override text
       return Object.assign(Object.create(Object.getPrototypeOf(m)), m, {
@@ -184,6 +221,36 @@ function registerTelegramHandlers(
       return;
     }
 
+    if (isClearCommand(raw)) {
+      await thread.setState({ clearedAt: new Date().toISOString() });
+      await thread.post(
+        "History cleared! I've forgotten our previous conversation. 🧹",
+      );
+      return;
+    }
+
+    if (isHelpCommand(raw)) {
+      await thread.post(
+        "Available commands:\n/start - Start the bot\n/clear - Clear chat history\n/help - Show this help message",
+      );
+      return;
+    }
+
+    if (isClearCommand(raw)) {
+      await thread.setState({ clearedAt: new Date().toISOString() });
+      await thread.post(
+        "History cleared! I've forgotten our previous conversation. 🧹",
+      );
+      return;
+    }
+
+    if (isHelpCommand(raw)) {
+      await thread.post(
+        "Available commands:\n/start - Start the bot\n/clear - Clear chat history\n/help - Show this help message",
+      );
+      return;
+    }
+
     await respondWithAi(bot, thread, raw, dbUser.id);
   });
 
@@ -211,7 +278,7 @@ function registerTelegramHandlers(
 
 function createTelegramBot(
   env: TelegramEnv,
-): Chat<{ telegram: ReturnType<typeof createTelegramAdapter> }> {
+): Chat<{ telegram: ReturnType<typeof createTelegramAdapter> }, BotState> {
   if (!env.botToken) {
     throw new Error("TELEGRAM_BOT_TOKEN is not set");
   }
@@ -226,8 +293,7 @@ function createTelegramBot(
     },
     state: createRedisState(),
     concurrency: { strategy: "queue" },
-    streamingUpdateIntervalMs: 600,
-    fallbackStreamingPlaceholderText: "Thinking…"
+    fallbackStreamingPlaceholderText: "Thinking…",
   });
 
   registerTelegramHandlers(bot);
@@ -235,9 +301,12 @@ function createTelegramBot(
   return bot;
 }
 
-export function getBot(): Chat<{
-  telegram: ReturnType<typeof createTelegramAdapter>;
-}> | null {
+export function getBot(): Chat<
+  {
+    telegram: ReturnType<typeof createTelegramAdapter>;
+  },
+  BotState
+> | null {
   if (botInstance !== undefined) {
     return botInstance;
   }

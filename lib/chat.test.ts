@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import {
   getTelegramEnv,
+  isClearCommand,
+  isHelpCommand,
   resolveTelegramWebhookOrigin,
   shouldSendWelcomeMessage,
 } from "@/lib/chat";
@@ -75,5 +77,24 @@ describe("shouldSendWelcomeMessage", () => {
 
   test("returns false for non-text messages", () => {
     expect(shouldSendWelcomeMessage({} as never)).toBe(false);
+  });
+});
+describe("isClearCommand", () => {
+  test("returns true for /clear", () => {
+    expect(isClearCommand({ text: " /clear " } as never)).toBe(true);
+  });
+
+  test("returns false for non-clear text", () => {
+    expect(isClearCommand({ text: "hello" } as never)).toBe(false);
+  });
+});
+
+describe("isHelpCommand", () => {
+  test("returns true for /help", () => {
+    expect(isHelpCommand({ text: " /help " } as never)).toBe(true);
+  });
+
+  test("returns false for non-help text", () => {
+    expect(isHelpCommand({ text: "hello" } as never)).toBe(false);
   });
 });
