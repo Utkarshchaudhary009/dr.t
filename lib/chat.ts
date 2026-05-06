@@ -105,11 +105,11 @@ async function respondWithAi(
         typeof h.content === "string" ? h.content.length : undefined,
       parts: Array.isArray(h.content)
         ? h.content.map((p) => ({
-            type: p.type,
-            hasData:
-              p.type !== "text" &&
-              (("data" in p && !!p.data) || ("image" in p && !!p.image)),
-          }))
+          type: p.type,
+          hasData:
+            p.type !== "text" &&
+            (("data" in p && !!p.data) || ("image" in p && !!p.image)),
+        }))
         : undefined,
     })),
   });
@@ -225,32 +225,9 @@ function createTelegramBot(
       }),
     },
     state: createRedisState(),
-    concurrency: { strategy: "debounce", debounceMs: 1000 },
-    streamingUpdateIntervalMs: 1000,
-    get fallbackStreamingPlaceholderText() {
-      const thoughts = [
-        "Dr. T is putting on his glasses... 👓",
-        "Calculating the sweetness factor... 🍬",
-        "Dr. T is thinking hard... 🧠",
-        "Dr. T is scrubbing in... 🧼",
-        "Analyzing carbohydrate count... 🍞",
-        "Reviewing clinical guidelines... 📚",
-        "Dr. T is adjusting his stethoscope... 🩺",
-        "Cross-referencing your history... 🕒",
-        "Processing data... ⚡",
-        "Dr. T is checking his clinical notes... 📝",
-        "Adjusting the lab coat for maximum focus... 🥼",
-        "Dr. T is pondering your query... 🤔",
-        "Searching the medical journals... 📖",
-        "Dr. T is tapping his chin thoughtfully... 🖐️",
-        "Checking the latest research data... 💻",
-        "Dr. T is tidying his desk for a better answer... 🧹",
-        "Staring intently at the monitor... 🖥️",
-        "Dr. T is taking a quick sip of water... 💧",
-        "Gathering all the facts... 📚✨",
-      ];
-      return thoughts[Math.floor(Math.random() * thoughts.length)];
-    },
+    concurrency: { strategy: "queue" },
+    streamingUpdateIntervalMs: 600,
+    fallbackStreamingPlaceholderText: "Thinking…"
   });
 
   registerTelegramHandlers(bot);
