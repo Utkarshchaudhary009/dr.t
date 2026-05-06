@@ -82,7 +82,19 @@ async function respondWithAi(
     })),
   });
 
-  const history = await toAiMessages(result.messages);
+  // Workaround: toAiMessages filters out messages with empty text.
+  // We ensure messages with attachments have at least a placeholder text.
+  const messagesToConvert = result.messages.map((m) => {
+    if (!m.text.trim() && (m.attachments?.length ?? 0) > 0) {
+      // Create a shallow copy and override text
+      return Object.assign(Object.create(Object.getPrototypeOf(m)), m, {
+        text: "See the Attachement",
+      });
+    }
+    return m;
+  });
+
+  const history = await toAiMessages(messagesToConvert);
 
   // Log converted history to see what's being sent to AI
   logTelegramFlow("history_converted", {

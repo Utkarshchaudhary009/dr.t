@@ -10,7 +10,8 @@
     "fmt": "prettier --write . && prettier --check .",
     "test": "bun test",
     "typecheck": "bun --bun tsc --noEmit",
-    "clean": "rm -rf .next && rm -rf node_modules && bun install"
+    "clean": "rm -rf .next && rm -rf node_modules && bun install",
+    "logs:deployment": "vercel logs production"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.67",
